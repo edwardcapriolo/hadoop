@@ -80,6 +80,7 @@
 #endif
 
 static const int DEFAULT_MIN_USERID = 1000;
+static const char* DEFAULT_CONTAINER_GROUP_MODE = "0770";
 
 static const char* DEFAULT_BANNED_USERS[] = {"yarn", "mapred", "hdfs", "bin", 0};
 
@@ -1122,7 +1123,7 @@ static int change_owner(const char* path, uid_t user, gid_t group) {
  */
 int create_directory_for_user(const char* path) {
   // set 750 permissions and setgid bit
-  mode_t permissions = S_IRWXU | S_IRGRP | S_IXGRP | S_ISGID;
+  mode_t permissions = get_container_group_mode() | S_ISGID;
   uid_t user = geteuid();
   gid_t group = getegid();
   uid_t root = 0;
@@ -1410,6 +1411,25 @@ int create_container_log_dirs(const char *container_id, const char *app_id,
   return 0;
 }
 
+mode_t get_container_group_mode(){
+  char *permission_string = get_section_value(CONTAINER_GROUP_MODE_KEY, &executor_cfg);
+  char *default_mode = DEFAULT_CONTAINER_GROUP_MODE;
+  char *endptr;
+  mode_t mode_val;
+  if (permission_string != NULL){
+    mode_val = (mode_t) strtol(permission_string, &endptr, 8);
+    if (*endptr != '\0'){
+      fprintf(LOGFILE, "Illegal value of %s for %s in configuration\n",
+      	      permission_string, CONTAINER_GROUP_MODE_KEY);
+      exit(1);
+    }
+    free(permission_string);
+  } else {
+    mode_val = (mode_t) strtol(default_mode, &endptr, 8);
+  }
+  return mode_val;
+}
+
 /**
  * Function to create the application directories.
  * Returns pointer to primary_app_dir or NULL if it fails.
@@ -1419,7 +1439,8 @@ static char *create_app_dirs(const char *user,
                              char* const* local_dirs)
 {
   // 750
-  mode_t permissions = S_IRWXU | S_IRGRP | S_IXGRP;
+  //mode_t permissions = S_IRWXU | S_IRGRP | S_IXGRP;
+  mode_t permissions = get_container_group_mode();
   char* const* nm_root;
   char *primary_app_dir = NULL;
   for(nm_root=local_dirs; *nm_root != NULL; ++nm_root) {
@@ -1429,7 +1450,7 @@ static char *create_app_dirs(const char *user,
     } else if (strstr(app_dir, "..") != 0) {
       fprintf(LOGFILE, "Unsupported app directory path detected.\n");
       free(app_dir);
-    } else if (mkdirs(app_dir, permissions) != 0) {
+    } else if (mkdir(app_dir, permissions) != 0) {
       free(app_dir);
     } else if (primary_app_dir == NULL) {
       primary_app_dir = app_dir;

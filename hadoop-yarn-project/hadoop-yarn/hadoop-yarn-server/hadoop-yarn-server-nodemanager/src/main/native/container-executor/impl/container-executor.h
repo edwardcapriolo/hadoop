@@ -79,6 +79,7 @@ enum operations {
 #define ROOT_TMP_DIR "private_slash_tmp"
 #define ROOT_VAR_TMP_DIR "private_var_slash_tmp"
 #define COMMAND_FILE_SECTION "command-execution"
+#define CONTAINER_GROUP_MODE_KEY "container.group.mode"
 
 //extern struct passwd *user_detail;
 extern struct section executor_cfg;
@@ -135,6 +136,15 @@ int launch_docker_container_as_user(const char * user, const char *app_id,
                               const char *pid_file, char* const* local_dirs,
                               char* const* log_dirs,
                               const char *command_file);
+/*
+In the directory structure:
+/yarn-root/nm-local-dir/usercache/auser/appcache
+Where nodemanager is running:
+user yarn group hadoop
+We require group +w permission as "auser" is owned auser
+Else nodemanager will not be able to create appcache
+*/
+mode_t get_container_group_mode();
 
 /*
  * Function used to launch a container as the provided user. It does the following :

@@ -545,7 +545,7 @@ void test_yarn_sysfs() {
   char* const* local_dir_ptr;
   for (local_dir_ptr = local_dirs; *local_dir_ptr != 0; ++local_dir_ptr) {
     char *user_dir = make_string("%s/usercache/%s", *local_dir_ptr, username);
-    if (mkdirs(user_dir, 0750) != 0) {
+    if (mkdirs(user_dir, 0770) != 0) {
       printf("Can not make user directories: %s\n", user_dir);
       exit(1);
     }
